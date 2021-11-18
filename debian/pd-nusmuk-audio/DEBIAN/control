@@ -1,0 +1,18 @@
+Package: pd-nusmuk-audio
+Version: 1.2-1
+Architecture: i386
+Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
+Installed-Size: 920
+Depends: libc6 (>= 2.1.3), pd
+Section: sound
+Priority: optional
+Homepage: http://puredata.info
+Description: a random collection of Pd objects dedicated to audio synthesis by Cyrille Henry
+ This objects collection aim at improving audio synthesis quality
+ This collection enholds :
+  synthesis tools
+  band limited oscillator
+  better tables reader
+  filters
+  effects
+  visualisation tools
