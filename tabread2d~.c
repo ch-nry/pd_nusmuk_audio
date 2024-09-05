@@ -36,6 +36,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 // Cyrille Henry 09 2024
 
 #include "m_pd.h"
+#include <math.h>
 
 /******************** tabread2d~ ***********************/
 
@@ -97,6 +98,17 @@ float tabread2d_read (t_tabread2d_tilde *x, int X, int Y) {
 	return x->x_vec[index].w_float;
 }
 
+float CubicHermite (float A, float B, float C, float D, float t)
+{
+    float a = -A / 2.0f + (3.0f*B) / 2.0f - (3.0f*C) / 2.0f + D / 2.0f;
+    float b = A - (5.0f*B) / 2.0f + 2.0f*C - D / 2.0f;
+    float c = -A / 2.0f + C / 2.0f;
+    float d = B;
+ 
+    return a*t*t*t + b*t*t + c*t + d;
+}
+ 
+ 
 t_int *tabread2d_tilde_perform(t_int *w)
 {
     t_tabread2d_tilde *x = (t_tabread2d_tilde *)(w[1]);
@@ -123,26 +135,26 @@ t_int *tabread2d_tilde_perform(t_int *w)
         float fractX2 = fractX * fractX;
         float fractX3 = fractX2 * fractX;
         float fractY2 = fractY * fractY;
-        float fractY3 = fractY2 * fractY; 
+        float fractY3 = fractY2 * fractY;  
 	 
-		float C00 = tabread2d_read(x, iindexX-1, iindexY-1 );
-		float C10 = tabread2d_read(x, iindexX,   iindexY-1 );
-		float C20 = tabread2d_read(x, iindexX+1, iindexY-1 );
-		float C30 = tabread2d_read(x, iindexX+2, iindexY-1 );
-		float C01 = tabread2d_read(x, iindexX-1, iindexY );
-		float C11 = tabread2d_read(x, iindexX,   iindexY );
-		float C21 = tabread2d_read(x, iindexX+1, iindexY );
-		float C31 = tabread2d_read(x, iindexX+2, iindexY );
-		float C02 = tabread2d_read(x, iindexX-1, iindexY+1);
-		float C12 = tabread2d_read(x, iindexX,   iindexY+1 );
-		float C22 = tabread2d_read(x, iindexX+1, iindexY+1 );
-		float C32 = tabread2d_read(x, iindexX+2, iindexY+1 );
-		float C03 = tabread2d_read(x, iindexX-1, iindexY+2 );
-		float C13 = tabread2d_read(x, iindexX,   iindexY+2 );
-		float C23 = tabread2d_read(x, iindexX+1, iindexY+2 );
-		float C33 = tabread2d_read(x, iindexX+2, iindexY+2 );
-		// TODO : min/ max sur les index
+		float C00 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
+		float C10 = tabread2d_read(x, iindexX									, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
+		float C20 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
+		float C30 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
+		float C01 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, iindexY 									);
+		float C11 = tabread2d_read(x, iindexX									, iindexY 									);
+		float C21 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, iindexY 									);
+		float C31 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, iindexY 									);
+		float C02 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY+1)%x->x_npointsY 				);
+		float C12 = tabread2d_read(x, iindexX									, (iindexY+1)%x->x_npointsY					);
+		float C22 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY+1)%x->x_npointsY 				);
+		float C32 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY+1)%x->x_npointsY 				);
+		float C03 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY+2)%x->x_npointsY					);
+		float C13 = tabread2d_read(x, iindexX									, (iindexY+2)%x->x_npointsY					);
+		float C23 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
+		float C33 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
 		
+		/*
 		float w0 = C11;
 		float w1 = C21;
 		float w2 = C12;
@@ -199,6 +211,14 @@ t_int *tabread2d_tilde_perform(t_int *w)
 		interpolation += a33 * fractX3 * fractY3;
 
 		*out++ =  interpolation;
+		*/
+		
+		float col0 = CubicHermite(C00, C10, C20, C30, fractX);
+        float col1 = CubicHermite(C01, C11, C21, C31, fractX);
+        float col2 = CubicHermite(C02, C12, C22, C32, fractX);
+        float col3 = CubicHermite(C03, C13, C23, C33, fractX);
+        
+        *out++ = CubicHermite(col0, col1, col2, col3, fractY);
     }
     return (w+6);
 
