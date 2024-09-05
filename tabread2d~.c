@@ -132,86 +132,23 @@ t_int *tabread2d_tilde_perform(t_int *w)
         int iindexY = findexY;
         float fractX = findexX - iindexX;
         float fractY = findexY - iindexY;
-        float fractX2 = fractX * fractX;
-        float fractX3 = fractX2 * fractX;
-        float fractY2 = fractY * fractY;
-        float fractY3 = fractY2 * fractY;  
 	 
 		float C00 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
-		float C10 = tabread2d_read(x, iindexX									, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
+		float C10 = tabread2d_read(x, iindexX % x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
 		float C20 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
 		float C30 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
-		float C01 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, iindexY 									);
-		float C11 = tabread2d_read(x, iindexX									, iindexY 									);
-		float C21 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, iindexY 									);
-		float C31 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, iindexY 									);
+		float C01 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, iindexY %x->x_npointsY 					);
+		float C11 = tabread2d_read(x, iindexX % x->x_npointsX					, iindexY %x->x_npointsY 					);
+		float C21 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, iindexY %x->x_npointsY 					);
+		float C31 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, iindexY %x->x_npointsY 					);
 		float C02 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY+1)%x->x_npointsY 				);
-		float C12 = tabread2d_read(x, iindexX									, (iindexY+1)%x->x_npointsY					);
+		float C12 = tabread2d_read(x, iindexX % x->x_npointsX					, (iindexY+1)%x->x_npointsY					);
 		float C22 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY+1)%x->x_npointsY 				);
 		float C32 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY+1)%x->x_npointsY 				);
 		float C03 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY+2)%x->x_npointsY					);
-		float C13 = tabread2d_read(x, iindexX									, (iindexY+2)%x->x_npointsY					);
+		float C13 = tabread2d_read(x, iindexX % x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
 		float C23 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
 		float C33 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
-		
-		/*
-		float w0 = C11;
-		float w1 = C21;
-		float w2 = C12;
-		float w3 = C22;
-		// x derivative
-		float x0 = (C21 - C01) / 2.;
-		float x1 = (C31 - C11) / 2.;
-		float x2 = (C22 - C02) / 2.;
-		float x3 = (C32 - C12) / 2.;
-		// y derivative
-		float y0 = (C12 - C10) / 2.;
-		float y1 = (C22 - C20) / 2.;
-		float y2 = (C13 - C11) / 2.;
-		float y3 = (C23 - C21) / 2.;
-		// xy derivative
-		float z0 = (C22 - C00) / 2.;
-		float z1 = (C32 - C10) / 2.;
-		float z2 = (C23 - C01) / 2.;
-		float z3 = (C33 - C11) / 2.;
-
-		float a00 = w0;
-		float a01 = y0;
-		float a02 = -3.*w0 + 3.*w2 -2.*y0 - y2;
-		float a03 = 2.*w0 - 2.*w2 + y0 + y2;
-		float a10 = x0;
-		float a11 = z0;
-		float a12 = -3.*x0 + 3.*x2 - 2.*z0 - z2;
-		float a13 = 2.*x0 - 2.*x2 + z0 + z2;
-		float a20 = -3.*w0 + 3.*w1 - 2.*x0 - x1;
-		float a21 = -3.*y0 + 3.*y1 - 2.*z0 - z1;
-		float a22 = 9.*w0 - 9.*w1 - 9.*w2 + 9.*w3 + 6.*x0 + 3.*x1 + -6.*x2 - 3.*x3 + 6.*y0 - 6.*y1 + 3.*y2 - 3.*y3 + 4.*z0 + 2.*z1 + 2.*z2 + z3;
-		float a23 = -6.*w0 + 6.*w1 + 6.*w2 - 6.*w3 -4.*x0 - 2.*x1 + 4.*x2 + 2.*x3 -3.*y0 + 3.*y1 - 3.*y2 + 3.*y3 + -2.*z0 - z1 - 2.*z2 - z3;
-		float a30 = 2.*w0 - 2.*w1 + x0 + x1;
-		float a31 = 2.*y0 - 2.*y1 + z0 + z1;
-		float a32 = -6.*w0 + 6.*w1 + 6.*w2 -6.*w3 -3.*x0 - 3.*x1 + 3.*x2 + 3.*x3 -4.*y0 + 4.*y1 - 2.*y2 + 2.*y3 + -2.*z0 - 2.*z1 - z2 - z3;
-		float a33 = 4.*w0 - 4.*w1 - 4.*w2 + 4.*w3 + 2.*x0 + 2.*x1 + -2.*x2 - 2.*x3 + 2.*y0 - 2.*y1 + 2.*y2 - 2.*y3 + z0 + z1 + z2 + z3;
-
-
-		float interpolation = a00;
-		interpolation += a01 * fractY;
-		interpolation += a02 * fractY2;
-		interpolation += a03 * fractY3;
-		interpolation += a10 * fractX;
-		interpolation += a11 * fractX * fractY;
-		interpolation += a12 * fractX * fractY2;
-		interpolation += a13 * fractX * fractY3;
-		interpolation += a20 * fractX2;
-		interpolation += a21 * fractX2 * fractY;
-		interpolation += a22 * fractX2 * fractY2;
-		interpolation += a23 * fractX2 * fractY3;
-		interpolation += a30 * fractX3;
-		interpolation += a31 * fractX3 * fractY;
-		interpolation += a32 * fractX3 * fractY2;
-		interpolation += a33 * fractX3 * fractY3;
-
-		*out++ =  interpolation;
-		*/
 		
 		float col0 = CubicHermite(C00, C10, C20, C30, fractX);
         float col1 = CubicHermite(C01, C11, C21, C31, fractX);
