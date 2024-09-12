@@ -130,9 +130,7 @@ static t_int *tabosc4c_tilde_perform(t_int *w)
     t_float fnpoints = x->x_fnpoints;
     int mask = fnpoints - 1;
     t_float conv = fnpoints * x->x_conv;
-    int maxindex;
     t_word *tab = x->x_vec, *addr;
-    int i;
     double dphase = fnpoints * x->x_phase + UNITBIT32;
 
     if (!tab) goto zero;
@@ -141,7 +139,7 @@ static t_int *tabosc4c_tilde_perform(t_int *w)
 
     while (n--)
     {
-        t_sample frac,  a,  b,  c,  d, cminusb;
+        t_sample frac,  a,  b,  c,  d;
         tf.tf_d = dphase;
         dphase += *in++ * conv;
         addr = tab + (tf.tf_i[HIOFFSET] & mask);

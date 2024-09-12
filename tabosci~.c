@@ -190,7 +190,6 @@ static t_int *tabosci_tilde_perform(t_int *w)
     t_float fnpoints = x->x_fnpoints;
     int mask = fnpoints - 1;
     t_float conv = fnpoints * x->x_conv;
-    int maxindex;
     t_word *tab = x->x_vec, *addr;
     int i;
     double dphase = fnpoints * x->x_phase + UNITBIT32;
@@ -201,7 +200,7 @@ static t_int *tabosci_tilde_perform(t_int *w)
 
     while (n--)
     {
-        t_sample frac,  a,  b,  c,  d, cminusb, temp, filter_out;
+        t_sample frac,  a,  b,  c,  d, temp, filter_out;
 
     	    for (i=0;i<x->upsample;i++)
     	    {
