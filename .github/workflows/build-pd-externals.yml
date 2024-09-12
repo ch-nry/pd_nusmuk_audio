@@ -1,0 +1,248 @@
+name: Build Pure-Data externals
+
+on: [push, pull_request]
+
+env:
+  PD_VERSION: 0.54-1
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        floatsize: [32, 64]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Clone Pure Data
+      run: git clone --branch=${PD_VERSION} --depth=1 https://github.com/pure-data/pure-data.git
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update -yqq
+        sudo apt-get install -yqq ninja-build cmake --fix-missing
+
+    - name: Prepare Cross-Compilation for arm64
+      if: matrix.arch == 'arm64'
+      run: |
+        sudo apt install gcc-aarch64-linux-gnu -y
+        echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+    - name: Build
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPUREDATA_ARCH_SUFFIX=${{ matrix.arch }} -DPUREDATA_FLOATSIZE=${{ matrix.floatsize }}
+        cmake --build build --target install
+
+    - name: Archive Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: nusmuk_audio-linux-${{ matrix.arch }}-pd${{ matrix.floatsize }}
+        path: build/package/nusmuk_audio
+
+  build_linux_arm7:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Clone Pure Data
+      run: git clone --branch=${PD_VERSION} --depth=1 https://github.com/pure-data/pure-data.git
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -yqq git build-essential cmake gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf ninja-build puredata
+
+    - name: Build (Single Precision)
+      run: ./cross_compile_rpi.sh
+
+    - name: Archive Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: nusmuk_audio-linux-arm7-pd32
+        path: build/package/nusmuk_audio
+
+  build_macos_universal:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        floatsize: [32, 64]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Clone Pure Data
+      run: git clone --branch=${PD_VERSION} --depth=1 https://github.com/pure-data/pure-data.git
+
+    - name: Install Dependencies
+      run: |
+        brew update
+        brew install ninja
+        if brew list cmake &>/dev/null; then
+          echo "cmake is already installed."
+        else
+          echo "Installing cmake..."
+          brew install --formula cmake
+        fi
+
+    - name: Build for amd64 and arm64
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14" -DPUREDATA_FLOATSIZE=${{ matrix.floatsize }}
+        cmake --build build --target install
+
+    - name: Archive Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: nusmuk_audio-macos-universal-pd${{ matrix.floatsize }}
+        path: build/package/nusmuk_audio
+
+  build_windows_amd64:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        floatsize: [32, 64]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download Pure Data Binaries
+      shell: pwsh
+      run: |
+        if (${{ matrix.floatsize }} -eq 32) {
+          Invoke-WebRequest -Uri "http://msp.ucsd.edu/Software/pd-$env:PD_VERSION.msw.zip" -OutFile "pd${{ matrix.floatsize }}-$env:PD_VERSION.msw.zip"
+        } else {
+          Invoke-WebRequest -Uri "https://puredata.info/downloads/pure-data/releases/$env:PD_VERSION-pd64/Pd64-$env:PD_VERSION.msw.zip" -OutFile "pd${{ matrix.floatsize }}-$env:PD_VERSION.msw.zip"
+        }
+        Expand-Archive -Path "pd${{ matrix.floatsize }}-$env:PD_VERSION.msw.zip" -DestinationPath .
+
+    - name: Build
+      shell: pwsh
+      run: |
+        if (${{ matrix.floatsize }} -eq 32) {
+          cmake -S . -B build -DPUREDATA_INCLUDE_DIRS="pd-$env:PD_VERSION/src" -DPUREDATA_LIB="pd-$env:PD_VERSION/bin/pd.lib" -G "Visual Studio 17 2022" -A x64 -DPUREDATA_FLOATSIZE=${{ matrix.floatsize }}
+        } else {
+          $pd64_version = $env:PD_VERSION -replace '-', '.'
+          cmake -S . -B build -DPUREDATA_INCLUDE_DIRS="Pd-$pd64_version/src" -DPUREDATA_LIB="Pd-$pd64_version/bin/pd64.lib" -G "Visual Studio 17 2022" -A x64 -DPUREDATA_FLOATSIZE=${{ matrix.floatsize }}
+        }
+        cmake --build build --config Release --target install
+
+    - name: Archive Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: nusmuk_audio-windows-amd64-pd${{ matrix.floatsize }}
+        path: build/package/nusmuk_audio
+
+  build_windows_i386:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download Pure Data Binaries
+      run: |
+        Invoke-WebRequest -Uri "http://msp.ucsd.edu/Software/pd-$env:PD_VERSION-i386.msw.zip" -OutFile "pd-$env:PD_VERSION-i386.msw.zip"
+        Expand-Archive -Path "pd-$env:PD_VERSION-i386.msw.zip" -DestinationPath .
+
+    - name: Build (Single Precision)
+      run: |
+        cmake -S . -B build -DPUREDATA_INCLUDE_DIRS="pd-$env:PD_VERSION-i386/src" -DPUREDATA_LIB="pd-$env:PD_VERSION-i386/bin/pd.lib" -G "Visual Studio 17 2022" -A Win32
+        cmake --build build --config Release --target install
+
+    - name: Archive Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: nusmuk_audio-windows-i386-pd32
+        path: build/package/nusmuk_audio
+
+  package_and_release:
+    runs-on: ubuntu-latest
+    needs: [build_linux, build_linux_arm7, build_macos_universal, build_windows_i386, build_windows_amd64]
+    strategy:
+      matrix:
+        os: [linux, macos, windows]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Merge Artifacts to Package
+        run: |
+          mkdir -p nusmuk_audio
+          cp -rn artifacts/nusmuk_audio-${{ matrix.os }}*/* nusmuk_audio
+
+      - name: Upload Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nusmuk_audio-${{ matrix.os }}
+          path: nusmuk_audio
+
+      - name: Create Zip for Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: zip -r nusmuk_audio-${{ matrix.os }}.zip nusmuk_audio
+
+      - name: Add Zip to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: nusmuk_audio-${{ matrix.os }}.zip
+
+  deken_check_and_upload:
+    runs-on: ubuntu-latest
+    needs: [package_and_release]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: nusmuk_audio-src
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: nusmuk_audio-windows
+          path: nusmuk_audio-windows
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: nusmuk_audio-macos
+          path: nusmuk_audio-macos
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: nusmuk_audio-linux
+          path: nusmuk_audio-linux
+
+      - name: Check Deken Package
+        shell: bash
+        run: |
+          SHORT=${GITHUB_REF:11}
+          SLUG=${SHORT//\//_}
+          for os in linux macos windows; do
+            echo "## ${os}" | tee -a $GITHUB_STEP_SUMMARY
+            mkdir -p package-${os}
+            docker run --rm --user $(id -u) --volume ./nusmuk_audio-${os}:/nusmuk_audio \
+              --volume ./package-${os}:/package registry.git.iem.at/pd/deken \
+              deken package --output-dir /package -v "${SLUG}" /nusmuk_audio
+
+            dek_files=$(ls package-${os}/*.dek)
+            for dek_file in $dek_files; do
+              filename=$(basename "$dek_file")
+              echo -e "#### \`$filename\`" | tee -a $GITHUB_STEP_SUMMARY
+              echo '```' | tee -a $GITHUB_STEP_SUMMARY
+              unzip -l "$dek_file" | awk 'NR>3 {print $4}' | sed '/^$/d' | sort | tee -a $GITHUB_STEP_SUMMARY
+              echo '```' | tee -a $GITHUB_STEP_SUMMARY
+            done
+          done
+
+      - name: Upload Deken Package
+        if: ${{ !contains(github.ref, 'test') }} # upload if not a "test" release
+        shell: bash
+        env:
+          DEKEN_USERNAME: ${{ secrets.DEKEN_USERNAME }}
+          DEKEN_PASSWORD: ${{ secrets.DEKEN_PASSWORD }}
+        run: |
+          SHORT=${GITHUB_REF:11}
+          SLUG=${SHORT//\//_}
+          for os in linux macos windows; do
+            docker run --rm -e DEKEN_USERNAME -e DEKEN_PASSWORD \
+              --volume ./nusmuk_audio-${os}:/nusmuk_audio registry.git.iem.at/pd/deken \
+              deken upload --no-source-error -v "${SLUG}" /nusmuk_audio
+          done
+          docker run --rm -e DEKEN_USERNAME -e DEKEN_PASSWORD \
+            --volume ./nusmuk_audio-src:/nusmuk_audio registry.git.iem.at/pd/deken \
+            deken upload -v "${SLUG}" /nusmuk_audio
