@@ -21,7 +21,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update -yqq
-        sudo apt-get install -yqq ninja-build cmake --fix-missing
+        sudo apt-get install -yqq ninja-build make --fix-missing
 
     - name: Prepare Cross-Compilation for arm64
       if: matrix.arch == 'arm64'
@@ -31,8 +31,7 @@ jobs:
 
     - name: Build
       run: |
-        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPUREDATA_ARCH_SUFFIX=${{ matrix.arch }} -DPUREDATA_FLOATSIZE=${{ matrix.floatsize }}
-        cmake --build build --target install
+        make
 
     - name: Archive Package
       uses: actions/upload-artifact@v4
@@ -51,7 +50,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        DEBIAN_FRONTEND=noninteractive sudo apt-get install -yqq git build-essential cmake gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf ninja-build puredata
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -yqq git build-essential make gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf ninja-build puredata
 
     - name: Build (Single Precision)
       run: ./cross_compile_rpi.sh
@@ -77,17 +76,16 @@ jobs:
       run: |
         brew update
         brew install ninja
-        if brew list cmake &>/dev/null; then
-          echo "cmake is already installed."
+        if brew list make &>/dev/null; then
+          echo "make is already installed."
         else
-          echo "Installing cmake..."
-          brew install --formula cmake
+          echo "Installing make..."
+          brew install --formula make
         fi
 
     - name: Build for amd64 and arm64
       run: |
-        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14" -DPUREDATA_FLOATSIZE=${{ matrix.floatsize }}
-        cmake --build build --target install
+        make
 
     - name: Archive Package
       uses: actions/upload-artifact@v4
@@ -142,9 +140,8 @@ jobs:
 
     - name: Build (Single Precision)
       run: |
-        cmake -S . -B build -DPUREDATA_INCLUDE_DIRS="pd-$env:PD_VERSION-i386/src" -DPUREDATA_LIB="pd-$env:PD_VERSION-i386/bin/pd.lib" -G "Visual Studio 17 2022" -A Win32
-        cmake --build build --config Release --target install
-
+        make
+        
     - name: Archive Package
       uses: actions/upload-artifact@v4
       with:
