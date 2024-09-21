@@ -2,7 +2,13 @@
 
 lib.name = nusmuk_audio
 
-class.sources = bq~.c tabosc4c~.c tabosci~.c tabread2d~.c tabread4c~.c
+class.sources = \
+	bq~.c \
+	tabosc4c~.c \
+	tabosci~.c \
+	tabread2d~.c \
+	tabread4c~.c \
+	${empty}
 
 datafiles = \
 	bspline3.wav \
