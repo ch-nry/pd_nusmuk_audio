@@ -1,4 +1,6 @@
 // tabread2d~
+// use a 1d table to stor data representing a 2d table.
+// this object interpolate between the data to create an audio signal
 
 /* 
 This software is copyrighted by Miller Puckette and others.  The following
@@ -71,13 +73,20 @@ void tabread2d_tilde_set(t_tabread2d_tilde *x, t_symbol *s)
         pd_error(x, "%s: bad template for tabread2d~", x->x_arrayname->s_name);
         x->x_vec = 0;
     }
-    else garray_usedindsp(a);
-    if (x->x_npoints < x->x_npointsX * x->x_npointsY) {
+    else { 
+    	garray_usedindsp(a);
+    	if (x->x_npoints < x->x_npointsX * x->x_npointsY) {
    		pd_error(x, "not enought points for %d*%d interpolation", x->x_npointsX, x->x_npointsY);
-   		// TODO : do somthing to prevent crash 
+   		x->x_vec = 0;
+   		}
    	}	
 }
 
+void tabread2d_tilde_size(t_tabread2d_tilde *x, t_float sizex, t_float sizey)
+{
+    x->x_npointsX = sizex;
+    x->x_npointsY = sizey;
+}
 
 void *tabread2d_tilde_new(t_symbol *s, t_floatarg sizex, t_floatarg sizey)
 {
@@ -86,10 +95,9 @@ void *tabread2d_tilde_new(t_symbol *s, t_floatarg sizex, t_floatarg sizey)
     x->x_vec = 0;
     x->x_out = outlet_new(&x->x_obj, gensym("signal"));
     x->x_in2 = inlet_new(&x->x_obj, &x->x_obj.ob_pd, &s_signal, &s_signal);
-    x->x_npointsX = sizex;
-    x->x_npointsY = sizey;
+
     tabread2d_tilde_set(x, x->x_arrayname);
-    
+    tabread2d_tilde_size(x, sizex, sizey);
     return (void *)x;
 }
 
@@ -128,27 +136,40 @@ t_int *tabread2d_tilde_perform(t_int *w)
     {
         t_sample findexX = *in1++;
         t_sample findexY = *in2++;
-        int iindexX = findexX;
-        int iindexY = findexY;
-        float fractX = findexX - iindexX;
-        float fractY = findexY - iindexY;
+        int iindexX, iindexY;
+        float fractX, fractY;
+        
+		iindexX = (int)findexX;
+		fractX = findexX - (int)findexX;
+		iindexX =  iindexX % x->x_npointsX;
+		if (fractX < 0) { fractX += 1.; iindexX-=1;}
+		if (iindexX < 0) iindexX += x->x_npointsX;
+		iindexX += x->x_npointsX;// pour etre sur qu'on reste positif malgré le -1
+
+		iindexY = (int)findexY;
+		fractY = findexY - (int)findexY;
+		iindexY =  iindexY % x->x_npointsY;
+		if (fractY < 0) { fractY += 1.; iindexY-=1;}
+		if (iindexY < 0) iindexY += x->x_npointsY;
+		iindexY += x->x_npointsY;
+
 	 
-		float C00 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
-		float C10 = tabread2d_read(x, iindexX % x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
-		float C20 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
-		float C30 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY-1+x->x_npointsY)%x->x_npointsY 	);
-		float C01 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, iindexY %x->x_npointsY 					);
-		float C11 = tabread2d_read(x, iindexX % x->x_npointsX					, iindexY %x->x_npointsY 					);
-		float C21 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, iindexY %x->x_npointsY 					);
-		float C31 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, iindexY %x->x_npointsY 					);
-		float C02 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY+1)%x->x_npointsY 				);
-		float C12 = tabread2d_read(x, iindexX % x->x_npointsX					, (iindexY+1)%x->x_npointsY					);
-		float C22 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY+1)%x->x_npointsY 				);
-		float C32 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY+1)%x->x_npointsY 				);
-		float C03 = tabread2d_read(x, (iindexX-1+x->x_npointsX) % x->x_npointsX	, (iindexY+2)%x->x_npointsY					);
-		float C13 = tabread2d_read(x, iindexX % x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
-		float C23 = tabread2d_read(x, (iindexX+1)%x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
-		float C33 = tabread2d_read(x, (iindexX+2)%x->x_npointsX					, (iindexY+2)%x->x_npointsY					);
+		float C00 = tabread2d_read(x, (iindexX-1) % x->x_npointsX	, (iindexY-1)%x->x_npointsY );
+		float C10 = tabread2d_read(x, iindexX % x->x_npointsX		, (iindexY-1)%x->x_npointsY );
+		float C20 = tabread2d_read(x, (iindexX+1)%x->x_npointsX		, (iindexY-1)%x->x_npointsY );
+		float C30 = tabread2d_read(x, (iindexX+2)%x->x_npointsX		, (iindexY-1)%x->x_npointsY );
+		float C01 = tabread2d_read(x, (iindexX-1) % x->x_npointsX	, iindexY %x->x_npointsY 	);
+		float C11 = tabread2d_read(x, iindexX % x->x_npointsX		, iindexY %x->x_npointsY 	);
+		float C21 = tabread2d_read(x, (iindexX+1)%x->x_npointsX		, iindexY %x->x_npointsY 	);
+		float C31 = tabread2d_read(x, (iindexX+2)%x->x_npointsX		, iindexY %x->x_npointsY 	);
+		float C02 = tabread2d_read(x, (iindexX-1) % x->x_npointsX	, (iindexY+1)%x->x_npointsY );
+		float C12 = tabread2d_read(x, iindexX % x->x_npointsX		, (iindexY+1)%x->x_npointsY	);
+		float C22 = tabread2d_read(x, (iindexX+1)%x->x_npointsX		, (iindexY+1)%x->x_npointsY );
+		float C32 = tabread2d_read(x, (iindexX+2)%x->x_npointsX		, (iindexY+1)%x->x_npointsY );
+		float C03 = tabread2d_read(x, (iindexX-1) % x->x_npointsX	, (iindexY+2)%x->x_npointsY	);
+		float C13 = tabread2d_read(x, iindexX % x->x_npointsX		, (iindexY+2)%x->x_npointsY	);
+		float C23 = tabread2d_read(x, (iindexX+1)%x->x_npointsX		, (iindexY+2)%x->x_npointsY	);
+		float C33 = tabread2d_read(x, (iindexX+2)%x->x_npointsX		, (iindexY+2)%x->x_npointsY	);
 		
 		float col0 = CubicHermite(C00, C10, C20, C30, fractX);
         float col1 = CubicHermite(C01, C11, C21, C31, fractX);
@@ -187,7 +208,7 @@ void tabread2d_tilde_setup(void)
         gensym("dsp"), A_CANT, 0);
     class_addmethod(tabread2d_tilde_class, (t_method)tabread2d_tilde_set,
         gensym("set"), A_SYMBOL, 0);
-    class_addmethod(tabread2d_tilde_class, (t_method)tabread2d_tilde_set,
+    class_addmethod(tabread2d_tilde_class, (t_method)tabread2d_tilde_size,
         gensym("size"), A_FLOAT, A_FLOAT, 0);
         
 }
