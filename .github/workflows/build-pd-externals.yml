@@ -6,8 +6,8 @@ env:
   PD_VERSION: 0.54-1
   PDINCLUDEDIR: ./pure-data/src
   PDLIBDIR: ./build
-  LIBNAME: nusmuk_audio
-  LIBSLUG: nusmuk_audio # for github release zip files
+  LIBNAME: nusmuk-audio
+  LIBSLUG: nusmuk-audio # for github release zip files
 
 jobs:
   build_linux:
