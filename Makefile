@@ -1,6 +1,6 @@
 # Makefile for nusmuk_audio
 
-lib.name = nusmuk_audio
+lib.name = nusmuk-audio
 
 class.sources = \
 	bq~.c \
