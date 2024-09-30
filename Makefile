@@ -24,7 +24,7 @@ datafiles = \
 	30_bands_stereo_analyse.pd \
 	filter~-help.pd \
 	30_bands_stereo_eq-help.pd \
-	____filter~.pd \
+	_filter~.pd \
 	30_bands_stereo_eq.pd \
 	granulator~-help.pd \
 	ADSR-help.pd \
